@@ -331,6 +331,17 @@ async def quote(ctx, *, txt=''):
     await ctx.send(txt)
 
 
+@bot.command(hidden=True, brief='Get bot invite')
+@commands.is_owner()
+@commands.cooldown(rate=RATE, per=COOLDOWN, type=commands.BucketType.channel)
+async def invite(ctx):
+    """Get the Discord invite for this bot"""
+    permissions = discord.Permissions(permissions=70634561)
+    invite_url = discord.utils.oauth_url(ctx.bot.user.id, permissions=permissions)
+    txt = f"Invite me with this link!\n{invite_url}"
+    await ctx.send(txt)
+
+
 @bot.command(hidden=True, brief='Parse URL')
 @commands.is_owner()
 @commands.cooldown(rate=RATE, per=COOLDOWN, type=commands.BucketType.channel)
@@ -374,9 +385,6 @@ async def testing(ctx, *, action=None):
                 txt = ''
             else:
                 txt = txt + txt1
-        await ctx.send(txt)
-    elif action == 'invite':
-        txt = '{}'.format(bot.get_invite())
         await ctx.send(txt)
     elif action == 'invoked':
         txt  = 'ctx.prefix = `{}`\n'.format(ctx.prefix)
