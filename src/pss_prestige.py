@@ -384,7 +384,7 @@ def get_prestige(char_input, direction, raw=False):
         elif crew_rarity == 'Legendary' and direction == 'from':
             prestige_txt += '\nNote that crew of rarity "Legendary" cannot be prestiged any further'
         elif raw is True:
-            prestige_txt += debug_txt
+            prestige_txt = [prestige_txt] + debug_txt
         return [prestige_txt], True
 
     if direction == "to":
