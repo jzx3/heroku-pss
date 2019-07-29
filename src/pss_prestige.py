@@ -348,9 +348,9 @@ def prestige_tbl_to_txt(ptbl, tbl_i2n, direction):
             if c1 != c1_original:
                 print('c1 = {} / {} (conflict)'.format(c1, c1_original))
                 assert c1 == c1_original  # Force the code to quit
-            line = '+ {} -> {}'.format(c2, c3)
+            line = '+ {} = {}'.format(c2, c3)
         else:
-            line = '{} + {} -> {}'.format(c1, c2, c3)
+            line = '{} + {} = {}'.format(c1, c2, c3)
         txt_list.append(line)
 
     txt_list.sort()
