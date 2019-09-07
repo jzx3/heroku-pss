@@ -265,6 +265,14 @@ async def daily(ctx):
 
 
 @commands.cooldown(rate=RATE, per=COOLDOWN, type=commands.BucketType.channel)
+@bot.command(hidden=False, brief='Show the news')
+async def news(ctx):
+    """Show the news"""
+    txt = dropship.get_news()
+    await ctx.send(txt)
+
+
+@commands.cooldown(rate=RATE, per=COOLDOWN, type=commands.BucketType.channel)
 @bot.command(hidden=True, brief='Get crew levelling costs')
 async def level(ctx, level):
     """Shows the cost for a crew to reach a certain level"""

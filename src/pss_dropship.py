@@ -202,6 +202,18 @@ def get_dropship_text():
     return txt
 
 
+# ----- Get News -----
+def get_news():
+    url = f'{base_url}/SettingService/ListAllNewsDesigns?languageKey=en'
+    raw_text = core.get_data_from_url(url)
+    d = core.xmltree_to_dict3(raw_text, key='NewsDesignId')
+    txt = ''
+    for k, v in d.items():
+        txt += f"**{v['Title']}**\n"
+        txt += v['Description'] + '\n\n'
+    return txt.strip()
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=
         'Daily Rewards & Dropship API')
