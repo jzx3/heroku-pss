@@ -209,18 +209,23 @@ def get_room_description(room_name):
     rooms = get_room_designs()
     id2roomname = create_reverse_lookup(rooms, 'RoomDesignId', 'RoomName')
     shortname_lookup = create_reverse_lookup(rooms, 'RoomShortName', 'RoomDesignId')
-    roomname_lookup = create_reverse_lookup(rooms, 'RoomName', 'RoomDesignId')
+    roomname_lookup = create_reverse_lookup2(rooms, 'RoomName', 'RoomDesignId')
 
+    room_arr = []
     raw_description = False
     if room_name[0] == '*':
         room_name = room_name[1:]
         raw_description = True
     if room_name in shortname_lookup.keys():
         room_idx = shortname_lookup[room_name]
-        room = rooms[room_idx]
+        room_arr = [ rooms[room_idx] ]
     if room_name in roomname_lookup.keys():
-        room_idx = roomname_lookup[room_name]
-        room = rooms[room_idx]
+        room_indices = roomname_lookup[room_name]
+        for room_idx in room_indices:
+            room_arr.append(rooms[room_idx])
+
+    txt_list = []
+    for i, room in enumerate(room_arr):
         if raw_description is True:
             return str(room)
         else:
@@ -236,7 +241,8 @@ def get_room_description(room_name):
                 missile=missiles[id2missilename[missile_id]]
                 missile_txt = missile_to_txt_description(missile, id2missilename)
                 txt += f'\n\n{missile_txt}'
-    return txt
+        txt_list.append(txt)
+    return txt_list
 
 
 # ----- Missiles ------------------------------------------------------
@@ -365,8 +371,9 @@ if __name__ == "__main__":
 
         # python3 pss_research.py --rooms "Service Vent Lv1"
         # python3 pss_research.py --rooms
-        txt = get_room_description(args.rooms)
-        print(txt)
+        txt_list = get_room_description(args.rooms)
+        print('\n\n'.join(txt_list))
+
         # room_str = args.rooms
         # print(room_str)
     if args.missile is not None:

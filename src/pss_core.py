@@ -93,6 +93,20 @@ def create_reverse_lookup(d, new_key, new_value):
     return rlookup
 
 
+def create_reverse_lookup2(d, new_key, new_value):
+    """Creates a dictionary of the form:
+    {'new_key': [ 'new_value1', 'new_value2', ...]}"""
+    rlookup = {}
+    for key in d.keys():
+        item = d[key]
+        rkey = item[new_key]
+        if rkey in rlookup:
+            rlookup[rkey] = rlookup[rkey] + [ item[new_value] ]
+        else:
+            rlookup[rkey] = [ item[new_value] ]
+    return rlookup
+
+
 def parse_links3(url):
     data = urllib.request.urlopen(url).read()
     root = xml.etree.ElementTree.fromstring(data.decode('utf-8'))

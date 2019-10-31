@@ -284,8 +284,9 @@ async def level(ctx, level):
 @bot.command(hidden=True, brief='(beta) Get room infos')
 async def roomsbeta(ctx, *, room_name=None):
     """(beta) Shows the information for specific room types. This command is currently under testing"""
-    txt = rs.get_room_description(room_name)
-    await ctx.send(txt)
+    txt_list = rs.get_room_description(room_name)
+    for txt in txt_list:
+        await ctx.send(txt)
 
 
 @commands.cooldown(rate=RATE, per=COOLDOWN, type=commands.BucketType.channel)
