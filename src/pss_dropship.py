@@ -135,7 +135,8 @@ def get_shop_item_text(d, id2item, ctbl, id2roomname):
         sale_item = ctbl[d['LimitedCatalogArgument']]
         txt = "**Shop**\n{}".format(get_character_text(sale_item))
     elif d['LimitedCatalogType'] == 'Room':
-        sale_item = id2roomname[d['LimitedCatalogArgument']]
+        sale_item_id=d['LimitedCatalogArgument']
+        sale_item = id2roomname.get(sale_item_id, f"Room ID #{sale_item_id}")
         txt = "**Shop**\n{}".format(sale_item)
     return txt
 

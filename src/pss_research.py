@@ -107,15 +107,15 @@ def get_research_names():
 
 
 # ----- Rooms ---------------------------------------------------------
-def get_room_designs():
+def get_room_designs(key='RoomDesignId'):
     raw_file = 'raw/room-designs-raw.txt'
     url = base_url + 'RoomService/ListRoomDesigns2?languageKey=en'
     raw_text = load_data_from_url(raw_file, url, refresh='auto')
-    return xmltree_to_dict3(raw_text, 'RoomName')
+    return xmltree_to_dict3(raw_text, key)
 
 
 def get_room_names():
-    rooms = get_room_designs()
+    rooms = get_room_designs(key='RoomName')
     room_names = list(rooms.keys())
     return list_to_text(room_names)
 
@@ -208,16 +208,19 @@ def room_to_txt_description(room, id2roomname):
 def get_room_description(room_name):
     rooms = get_room_designs()
     id2roomname = create_reverse_lookup(rooms, 'RoomDesignId', 'RoomName')
-    shortname_lookup = create_reverse_lookup(rooms, 'RoomShortName', 'RoomName')
+    shortname_lookup = create_reverse_lookup(rooms, 'RoomShortName', 'RoomDesignId')
+    roomname_lookup = create_reverse_lookup(rooms, 'RoomName', 'RoomDesignId')
 
     raw_description = False
     if room_name[0] == '*':
         room_name = room_name[1:]
         raw_description = True
     if room_name in shortname_lookup.keys():
-        room_name = shortname_lookup[room_name]
-    if room_name in rooms.keys():
-        room = rooms[room_name]
+        room_idx = shortname_lookup[room_name]
+        room = rooms[room_idx]
+    if room_name in roomname_lookup.keys():
+        room_idx = roomname_lookup[room_name]
+        room = rooms[room_idx]
         if raw_description is True:
             return str(room)
         else:
@@ -314,9 +317,14 @@ if __name__ == "__main__":
                 print(txt)
         elif args.list == 'rooms':
             # python3 pss_research.py --list rooms
-            txt_list = get_room_names()
-            for txt in txt_list:
-                print(txt)
+            # txt_list = get_room_names()
+            # for txt in txt_list:
+            #     print(txt)
+            rooms = get_room_designs(key='RoomDesignId')
+            idx = list(rooms.keys())
+            for idx in room_names:
+                room_Name = rooms[idx]['RoomName']
+                print(f"{idx}: {room_name}")
     if args.research is not None:
         # python3 pss_research.py --research "Ion Charge Lv2"
         research_str = args.research
