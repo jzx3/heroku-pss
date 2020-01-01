@@ -26,6 +26,7 @@ import time
 # ----- Setup ---------------------------------------------------------
 RATE = 3
 COOLDOWN = 30.0
+BETA_MESSAGE = "**Warning**: This command is under testing. Use it at your own risk. Also, the database may be wiped at any time."
 
 if "COMMAND_PREFIX" in os.environ:
     COMMAND_PREFIX=os.getenv('COMMAND_PREFIX')
@@ -84,7 +85,7 @@ async def shell(ctx, *, cmd):
     await ctx.send(txt)
 
 
-# ----- PSS Bot Commands --------------------------------------------------------------
+# ----- PSS Prestige Commands ---------------------------------------------------------
 @bot.command(brief='Get prestige combos of crew')
 @commands.cooldown(rate=RATE, per=COOLDOWN, type=commands.BucketType.channel)
 async def prestige(ctx, *, name):
@@ -111,6 +112,72 @@ async def recipe(ctx, *, name=''):
             await ctx.send(f'Failed to find a recipe for crew "{name}" (note that item recipes now use the `/ingredients` command)')
 
 
+@commands.cooldown(rate=(2*RATE), per=COOLDOWN, type=commands.BucketType.channel)
+@bot.command(hidden=True, brief='Adds a crew')
+async def addcrew(ctx, type, *crew_list):
+    """Adds one or more crew (names should be comma separated) for creating a prestige table
+    Crew type = current (for existing crew) or target (for crew you want to prestige to)"""
+    crew_list = ' '.join(crew_list)
+    write_log(ctx.prefix, ctx.command, '{} {}'.format(type, crew_list),
+              ctx.author, ctx.guild)
+    if type == 'current':
+        type = 'current_crew'
+    elif type == 'target':
+        type = 'target_crew'
+    else:
+        return
+    txt, crew_list = p.add_crew(
+        p.DB_FILE, ctx.author.id, ctx.author, type, crew_list)
+    await ctx.send(txt)
+    await ctx.send(BETA_MESSAGE)
+
+
+@commands.cooldown(rate=(2*RATE), per=COOLDOWN, type=commands.BucketType.channel)
+@bot.command(hidden=True, brief='Removes a crew')
+async def rmcrew(ctx, type, *crew_list):
+    """Removes one or more crew (names should be comma separated) for creating a prestige table
+    Crew type = current (for existing crew) or target (for crew you want to prestige to)"""
+    crew_list = ','.join(crew_list)
+    write_log(ctx.prefix, ctx.command, '{} {}'.format(type, crew_list),
+              ctx.author, ctx.guild)
+    if type == 'current':
+        type = 'current_crew'
+    elif type == 'target':
+        type = 'target_crew'
+    else:
+        return
+    txt, crew_list = p.delete_crew(
+        p.DB_FILE, ctx.author.id, type, crew_list)
+    await ctx.send(txt)
+    await ctx.send(BETA_MESSAGE)
+
+
+@commands.cooldown(rate=(2*RATE), per=COOLDOWN, type=commands.BucketType.channel)
+@bot.command(hidden=True, brief='Shows crew')
+async def showcrew(ctx, *, crew_rarity='all'):
+    """Shows crew (specify rarity as all, Unique, Epic, Hero, etc)"""
+    write_log(ctx.prefix, ctx.command, '{}'.format(crew_rarity),
+              ctx.author, ctx.guild)
+    _, _, _, txt = p.show_crewlist(p.DB_FILE, ctx.author.id, crew_rarity)
+    await ctx.send(txt)
+    await ctx.send(BETA_MESSAGE)
+
+
+@commands.cooldown(rate=(2*RATE), per=COOLDOWN, type=commands.BucketType.channel)
+@bot.command(hidden=True, brief='Shows prestige table')
+async def prestigetablebeta(ctx, *, crew_rarity='all'):
+    """Shows prestige table (specify rarity as all, Unique, Epic, Hero, etc)"""
+    write_log(ctx.prefix, ctx.command, '{}'.format(crew_rarity),
+              ctx.author, ctx.guild)
+    txt_list, output_file = p.show_table(p.DB_FILE, ctx.author.id, crew_rarity)
+    f = discord.File(output_file)
+    await ctx.channel.send('Prestige Table', file=f)
+    for txt in txt_list:
+        await ctx.send(txt)
+    await ctx.send(BETA_MESSAGE)
+
+
+# ----- Other PSS Bot Commands --------------------------------------------------------
 @bot.command(brief='Get item ingredients')
 @commands.cooldown(rate=RATE, per=COOLDOWN, type=commands.BucketType.channel)
 async def ingredients(ctx, *, name=None):
@@ -361,6 +428,7 @@ async def parse(ctx, *, url):
         await ctx.send(txt)
 
 
+# ----- Testing -------------------------------------------------------
 @bot.command(hidden=True,
     brief='These are testing commands, usually for debugging purposes')
 @commands.is_owner()

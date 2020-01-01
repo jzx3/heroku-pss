@@ -3,6 +3,7 @@ holidays
 numpy
 pandas
 pip
+psycopg2-binary
 python-dateutil
 pytz
 discord.py==1.2.5
