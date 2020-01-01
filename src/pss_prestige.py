@@ -30,6 +30,10 @@ MESSAGE_CHARACTER_LIMIT = 2000
 RAW_CHARFILE = "raw/pss-chars-raw.txt"
 RAW_COLLECTIONSFILE = 'raw/pss-collections-raw.txt'
 DB_FILE = "pss.db"
+DATABASE_URL = os.getenv('DATABASE_URL')
+if DATABASE_URL is None:
+    print('No database has been set up')
+
 
 base_url = 'http://{}/'.format(get_production_server())
 next_target = {'Common': 'Elite',
@@ -418,19 +422,27 @@ def show_new_chars(action='prestige'):
 
 
 # ----- Crew Database -------------------------------------------------
-def init_database(filename):
-    conn = sqlite3.connect(filename)
+def db_connect():
+    if DATABASE_URL is None:
+        return sqlite3.connect(DB_FILE)
+    else:
+        return psycopg2.connect(DATABASE_URL)
+
+
+def init_database():
+    conn = db_connect()
     c = conn.cursor()
     try:
         c.execute('CREATE TABLE chars (discord_id TEXT PRIMARY KEY, discord_name TEXT, current_crew TEXT, target_crew TEXT)')
-    except sqlite3.OperationalError:
-        print('SQLite table already exists')
+    except Exception as e:
+        print('Table `chars` already exists')
+        print(e)
     conn.commit()
     conn.close()
 
 
 def read_database(filename, discord_id: str):
-    conn = sqlite3.connect(filename)
+    conn = db_connect()
     c = conn.cursor()
     # sql_query = "SELECT * FROM chars WHERE discord_id='{}'".format(discord_id)
     sql_query = "SELECT * FROM chars WHERE discord_id=?"
@@ -463,7 +475,7 @@ def extract_row_data(rows, column):
 
 
 def custom_sqlite_command(filename, command_str):
-    conn = sqlite3.connect(filename)
+    conn = db_connect()
     c = conn.cursor()
     c.execute(command_str)
     conn.commit()
@@ -476,7 +488,7 @@ def insert_data(db_file, discord_id, discord_name, current_crew, target_crew):
     print('Crew IDs: current_crew={}, target_crew={}'.format(
         current_crew, target_crew))
 
-    conn = sqlite3.connect(db_file)
+    conn = db_connect()
     c = conn.cursor()
     c.execute('INSERT INTO chars VALUES ("{}", "{}", "{}", "{}")'.format(
         discord_id, discord_name, current_crew, target_crew))
@@ -495,7 +507,7 @@ def update_data(db_file: str, discord_id: int, column: str, crew_list: list):
     print('Crew IDs to be updated in column {}: {}'.format(
         column, crew_list))
 
-    conn = sqlite3.connect(db_file)
+    conn = db_connect()
     c = conn.cursor()
     sql_str = "UPDATE chars SET {}='{}' WHERE discord_id='{}'".format(
         column, crew_list, discord_id)
