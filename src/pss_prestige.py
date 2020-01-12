@@ -16,6 +16,7 @@ import csv
 import numpy as np
 import os
 import pandas as pd
+import psycopg2
 import re
 import sqlite3
 import sys
@@ -30,9 +31,26 @@ MESSAGE_CHARACTER_LIMIT = 2000
 RAW_CHARFILE = "raw/pss-chars-raw.txt"
 RAW_COLLECTIONSFILE = 'raw/pss-collections-raw.txt'
 DB_FILE = "pss.db"
+
+if 'DEBUG' in os.environ:
+    DEBUG = True
+else:
+    DEBUG = None
+
 DATABASE_URL = os.getenv('DATABASE_URL')
 if DATABASE_URL is None:
     print('No database has been set up')
+    print(f'SQLite database {DB_FILE} will be used')
+    CONN = sqlite3.connect(DB_FILE)
+else:
+    try:
+        print(f"Establishing Connection to {DATABASE_URL}...")
+        CONN = psycopg2.connect(DATABASE_URL)
+        CONN.set_session(autocommit=True)
+    except Exception as e:
+        print(f"Connection failed")
+        print(f"Exception: {e}")
+        CONN = None
 
 
 base_url = 'http://{}/'.format(get_production_server())
@@ -422,36 +440,36 @@ def show_new_chars(action='prestige'):
 
 
 # ----- Crew Database -------------------------------------------------
-def db_connect():
-    if DATABASE_URL is None:
-        return sqlite3.connect(DB_FILE)
-    else:
-        return psycopg2.connect(DATABASE_URL)
-
-
 def init_database():
-    conn = db_connect()
-    c = conn.cursor()
+    c = CONN.cursor()
     try:
         c.execute('CREATE TABLE chars (discord_id TEXT PRIMARY KEY, discord_name TEXT, current_crew TEXT, target_crew TEXT)')
     except Exception as e:
-        print('Table `chars` already exists')
-        print(e)
-    conn.commit()
-    conn.close()
+        txt = 'Unable to create table `chars`\n'
+        txt += f'{e}'
+    CONN.commit()
+    # CONN.close()
+    return txt
 
 
-def read_database(filename, discord_id: str):
-    conn = db_connect()
-    c = conn.cursor()
-    # sql_query = "SELECT * FROM chars WHERE discord_id='{}'".format(discord_id)
-    sql_query = "SELECT * FROM chars WHERE discord_id=?"
-    c.execute(sql_query, (discord_id,))
-    rows = c.fetchall()
+def read_database(discord_id: str):
+    if DEBUG is True:
+        print(f"read_database({discord_id})")
+    c = CONN.cursor()
+    sql_query = "SELECT * FROM chars WHERE discord_id=%s"
+    if DEBUG is True:
+        print(f"- executing '{sql_query}'")
+    try:
+        c.execute(sql_query, [ str(discord_id) ])
+        rows = c.fetchall()
+    except Exception as e:
+        print(f"Exception: {e}")
+        return None
+
     for row in rows:
         print('{} | {} | {} | {}'.format(
             row[0], row[1], row[2], row[3]))
-    conn.close()
+    # CONN.close()
     return rows
 
 
@@ -474,29 +492,30 @@ def extract_row_data(rows, column):
         return None, []
 
 
-def custom_sqlite_command(filename, command_str):
-    conn = db_connect()
-    c = conn.cursor()
+def custom_sqlite_command(command_str):
+    c = CONN.cursor()
     c.execute(command_str)
-    conn.commit()
-    conn.close()
+    CONN.commit()
+    # CONN.close()
 
 
-def insert_data(db_file, discord_id, discord_name, current_crew, target_crew):
+def insert_data(discord_id, discord_name, current_crew, target_crew):
     current_crew = ','.join(current_crew)
     target_crew = ','.join(target_crew)
-    print('Crew IDs: current_crew={}, target_crew={}'.format(
-        current_crew, target_crew))
+    if DEBUG is True:
+        print(f'insert_data({discord_id}, {discord_name}, {current_crew}, {target_crew})')
 
-    conn = db_connect()
-    c = conn.cursor()
-    c.execute('INSERT INTO chars VALUES ("{}", "{}", "{}", "{}")'.format(
-        discord_id, discord_name, current_crew, target_crew))
-    conn.commit()
-    conn.close()
+    c = CONN.cursor()
+    try:
+        c.execute('INSERT INTO chars VALUES (%s, %s, %s, %s)',
+            [discord_id, discord_name, current_crew, target_crew] )
+    except Exception as e:
+        print(f"- Exception: {e}")
+    CONN.commit()
+    # CONN.close()
 
 
-def update_data(db_file: str, discord_id: int, column: str, crew_list: list):
+def update_data(discord_id: int, column: str, crew_list: list):
     # print('update_data()')
     # print(db_file, type(db_file))
     # print(discord_id, type(discord_id))
@@ -504,31 +523,24 @@ def update_data(db_file: str, discord_id: int, column: str, crew_list: list):
     # print(crew_list, type(crew_list))
 
     crew_list = ','.join(crew_list)
-    print('Crew IDs to be updated in column {}: {}'.format(
-        column, crew_list))
+    if DEBUG is True:
+        print(f'update_data(discord_id={discord_id}, column={column}, crew_list={crew_list})')
 
-    conn = db_connect()
-    c = conn.cursor()
-    sql_str = "UPDATE chars SET {}='{}' WHERE discord_id='{}'".format(
-        column, crew_list, discord_id)
-    # sql_data = ("{}".format(crew_list),)
-    # print('c.execute("{}", {})'.format(sql_str, sql_data))
-    print('c.execute("{}")'.format(sql_str))
+    c = CONN.cursor()
+    sql_str = "UPDATE chars SET %s=%s WHERE discord_id=%s"
+    sql_data = [ column, crew_list, discord_id ]
+    if DEBUG is True:
+        print(f'- c.execute("{sql_str}", {sql_data})')
     try:
-        # c.execute(sql_str, data)
-        c.execute(sql_str)
-        conn.commit()
-    except sqlite3.Error as e:
-        print('Error: {}'.format(e))
-        print('Error Message: {}'.format(e.message))
+        c.execute(sql_str, data)
+        CONN.commit()
     except Exception as e:
-        print('Exception: {}'.format(e))
+        print(f'- Exception: {e}')
 
-    if conn.total_changes != 1:
+    if CONN.total_changes != 1:
         print('Number of rows changed for "{}" = {} (expected value = 1)'.format(
             sql_str, conn.total_changes))
-    conn.close()
-    # print('conn.close() completed')
+    # CONN.close()
 
 
 def crewtxt_to_crewnames(crew_txt, prefix='Adding '):
@@ -545,21 +557,28 @@ def crewtxt_to_crewnames(crew_txt, prefix='Adding '):
     return crew_ids, txt
 
 
-def add_crew(db_file, discord_id, discord_name, column, crew_txt):
-    rows = read_database(db_file, discord_id)
+def add_crew(discord_id, discord_name, column, crew_txt):
+    if DEBUG is True:
+        print(f"add_crew(discord_id={discord_id}, discord_name={discord_name}, column={column}, crew_txt={crew_txt})")
+    rows = read_database(discord_id)
     row, crew_ids = extract_row_data(rows, column)
     if row is not None:
+        if DEBUG is True:
+            print(f"- row found")
         update_rows = True
     else:
+        if DEBUG is True:
+            print(f"- row will be created")
         update_rows = False
 
     new_crew_ids, txt = crewtxt_to_crewnames(crew_txt)
-    print('new_crew_ids = {} (to be added)'.format(new_crew_ids))
+    if DEBUG is True:
+        print('- new_crew_ids = {} (to be added)'.format(new_crew_ids))
     crew_ids += new_crew_ids
 
     if update_rows is True:
         print('{} (id#{}): {} = {} (to attempt)'.format(discord_name, discord_id, column, crew_ids))
-        update_data(db_file, discord_id, column, crew_ids)
+        update_data(discord_id, column, crew_ids)
     else:
         if column == 'current_crew':
             current_crew = crew_ids
@@ -567,13 +586,15 @@ def add_crew(db_file, discord_id, discord_name, column, crew_txt):
         elif column == 'target_crew':
             current_crew = []
             target_crew = crew_ids
-        insert_data(db_file, discord_id, discord_name, current_crew, target_crew)
+        insert_data(discord_id, discord_name, current_crew, target_crew)
         print('{} (id#{}): {} = {} (updated)'.format(discord_name, discord_id, column, crew_ids))
     return txt, crew_ids
 
 
-def delete_crew(db_file, discord_id, column, crew_txt):
-    rows = read_database(db_file, discord_id)
+def delete_crew(discord_id, column, crew_txt):
+    if DEBUG is True:
+        print(f"delete_crew(discord_id={discord_id}, column={column}, crew_txt={crew_txt})")
+    rows = read_database(discord_id)
     row, old_crew_ids = extract_row_data(rows, column)
     if row is None:
         print('There are no crews to delete')
@@ -588,13 +609,17 @@ def delete_crew(db_file, discord_id, column, crew_txt):
             continue
         crew_ids += [old_crew_id]
 
-    update_data(db_file, discord_id, column, crew_ids)
+    update_data(discord_id, column, crew_ids)
     return txt, crew_ids
 
 
-def get_crew_id_list(filename, column, discord_id: str):
-    # print('get_crew_id_list()')
-    rows = read_database(filename, discord_id)
+def get_crew_id_list(column, discord_id: str):
+    if DEBUG is True:
+        print(f'get_crew_id_list(column={column}, discord_id={discord_id})')
+        print(f'- read_database({discord_id})')
+    rows = read_database(discord_id)
+    if DEBUG is True:
+        print(f"Retrived rows={rows}")
     row, crew_ids = extract_row_data(rows, column)
     # print('get_crew_ids(): crew_ids = {} (type = {})'.format(crew_ids, type(crew_ids)))
     assert isinstance(crew_ids, list)
@@ -625,8 +650,11 @@ def filter_crew_ids(crew_ids: list, table_rarity: str):
     return filtered_ids
 
 
-def show_crewlist0(filename, discord_id, column, rarity_filter):
-    crew_ids = get_crew_id_list(filename, column, discord_id)
+def show_crewlist0(discord_id, column, rarity_filter):
+    if DEBUG is True:
+        print(f"show_crewlist0(discord_id={discord_id}, column={column}, rarity_filter={rarity_filter})")
+        print(f"- call get_crew_id_list({column}, {discord_id})")
+    crew_ids = get_crew_id_list(column, discord_id)
     # print('crew_ids = {}'.format(crew_ids))
     filtered_ids = filter_crew_ids(crew_ids, rarity_filter)
     if len(filtered_ids) == 0:
@@ -638,23 +666,26 @@ def show_crewlist0(filename, discord_id, column, rarity_filter):
     return crew_ids, filtered_ids, name_list, txt
 
 
-def show_crewlist(filename, discord_id, rarity_filter):
+def show_crewlist(discord_id, rarity_filter):
     # Current Crew
+    if DEBUG is True:
+        print(f"show_crewlist(discord_id={discord_id}, rarity_filter={rarity_filter}")
     crew_ids, filtered_ids, name_list, txt = show_crewlist0(
-        filename, discord_id, 'current_crew', rarity_filter)
+        discord_id, 'current_crew', rarity_filter)
     if rarity_filter == 'all':
         crew_txt = '**Your Crew**\n'
     else:
         crew_txt = '**Your {} Crew**\n'.format(rarity_filter)
     crew_txt += txt
-    print(crew_txt)
+    if DEBUG is True:
+        print(crew_txt)
 
     # Target Crew
     if rarity_filter in next_target.keys():
         target_rarity = next_target[rarity_filter]
 
         _, target_ids, target_names, txt = show_crewlist0(
-            filename, discord_id, 'target_crew', target_rarity)
+            discord_id, 'target_crew', target_rarity)
 
         if len(target_ids) > 0:
             if rarity_filter == 'all':
@@ -666,11 +697,13 @@ def show_crewlist(filename, discord_id, rarity_filter):
     return crew_ids, filtered_ids, name_list, crew_txt
 
 
-def new_table(filename, discord_id, table_rarity, output_file):
-    print('rarity = {}'.format(table_rarity))
+def new_table(discord_id, table_rarity, output_file):
+    if DEBUG is True:
+        print('rarity = {}'.format(table_rarity))
     crew_ids, filtered_ids, name_list, txt = show_crewlist(
-        filename, discord_id, table_rarity)
-    print('filtered_ids = {}'.format(filtered_ids))
+        discord_id, table_rarity)
+    if DEBUG is True:
+        print('filtered_ids = {}'.format(filtered_ids))
 
     if len(filtered_ids) == 0:
         print('show_table(): filtered_ids = {}'.format(filtered_ids))
@@ -688,7 +721,7 @@ def new_table(filename, discord_id, table_rarity, output_file):
         target_rarity = next_target[table_rarity]
 
         crew_ids, filtered_ids, name_list, txt = show_crewlist0(
-            filename, discord_id, 'target_crew', target_rarity)
+            discord_id, 'target_crew', target_rarity)
         if len(name_list) == 0:
             return
 
@@ -710,9 +743,9 @@ def new_table(filename, discord_id, table_rarity, output_file):
     return txt_list
 
 
-def show_table(filename, discord_id, table_rarity):
+def show_table(discord_id, table_rarity):
     output_file = '{}_prestige.csv'.format(table_rarity.lower())
-    txt_list = new_table(filename, discord_id, table_rarity, output_file)
+    txt_list = new_table(discord_id, table_rarity, output_file)
     return txt_list, output_file
 
 
@@ -1054,7 +1087,7 @@ if __name__ == '__main__':
         print(txt)
     elif args.prestige == 'init':
         # python3 pss_prestige.py init db
-        init_database(DB_FILE)
+        init_database()
     elif args.prestige == 'showcrew':
         # python3 pss_prestige.py showcrew all
         crew_ids, filtered_ids, name_list, txt = show_crewlist(
