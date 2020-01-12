@@ -33,6 +33,11 @@ if "COMMAND_PREFIX" in os.environ:
 else:
     COMMAND_PREFIX='/'
 
+if 'DEBUG' in os.environ:
+    DEBUG = True
+else:
+    DEBUG = None
+
 PWD = os.getcwd()
 sys.path.insert(0, PWD + '/src/')
 import utility
@@ -113,21 +118,30 @@ async def recipe(ctx, *, name=''):
 
 
 @commands.cooldown(rate=(2*RATE), per=COOLDOWN, type=commands.BucketType.channel)
+@commands.is_owner()
+@bot.command(hidden=True, brief='Initialize database')
+async def initdb(ctx):
+    await ctx.send("Initializing database")
+    txt = p.init_database()
+    await ctx.send(txt)
+
+
+@commands.cooldown(rate=(2*RATE), per=COOLDOWN, type=commands.BucketType.channel)
 @bot.command(hidden=True, brief='Adds a crew')
 async def addcrew(ctx, type, *crew_list):
     """Adds one or more crew (names should be comma separated) for creating a prestige table
     Crew type = current (for existing crew) or target (for crew you want to prestige to)"""
     crew_list = ' '.join(crew_list)
-    write_log(ctx.prefix, ctx.command, '{} {}'.format(type, crew_list),
-              ctx.author, ctx.guild)
     if type == 'current':
         type = 'current_crew'
     elif type == 'target':
         type = 'target_crew'
     else:
         return
+    if DEBUG is True:
+        print(f"[bot.py] addcrew(type={type}, crew_list={crew_list})")
     txt, crew_list = p.add_crew(
-        p.DB_FILE, ctx.author.id, ctx.author, type, crew_list)
+        ctx.author.id, ctx.author, type, crew_list)
     await ctx.send(txt)
     await ctx.send(BETA_MESSAGE)
 
@@ -138,16 +152,16 @@ async def rmcrew(ctx, type, *crew_list):
     """Removes one or more crew (names should be comma separated) for creating a prestige table
     Crew type = current (for existing crew) or target (for crew you want to prestige to)"""
     crew_list = ','.join(crew_list)
-    write_log(ctx.prefix, ctx.command, '{} {}'.format(type, crew_list),
-              ctx.author, ctx.guild)
     if type == 'current':
         type = 'current_crew'
     elif type == 'target':
         type = 'target_crew'
     else:
         return
+    if DEBUG is True:
+        print(f"[bot.py] rmcrew(type={type}, crew_list={crew_list})")
     txt, crew_list = p.delete_crew(
-        p.DB_FILE, ctx.author.id, type, crew_list)
+        ctx.author.id, type, crew_list)
     await ctx.send(txt)
     await ctx.send(BETA_MESSAGE)
 
@@ -156,19 +170,19 @@ async def rmcrew(ctx, type, *crew_list):
 @bot.command(hidden=True, brief='Shows crew')
 async def showcrew(ctx, *, crew_rarity='all'):
     """Shows crew (specify rarity as all, Unique, Epic, Hero, etc)"""
-    write_log(ctx.prefix, ctx.command, '{}'.format(crew_rarity),
-              ctx.author, ctx.guild)
-    _, _, _, txt = p.show_crewlist(p.DB_FILE, ctx.author.id, crew_rarity)
+    if DEBUG is True:
+        print(f"[bot.py] showcrew(crew_rarity={crew_rarity})")
+    _, _, _, txt = p.show_crewlist(ctx.author.id, crew_rarity)
     await ctx.send(txt)
     await ctx.send(BETA_MESSAGE)
 
 
 @commands.cooldown(rate=(2*RATE), per=COOLDOWN, type=commands.BucketType.channel)
 @bot.command(hidden=True, brief='Shows prestige table')
-async def prestigetablebeta(ctx, *, crew_rarity='all'):
+async def prestigetable(ctx, *, crew_rarity='all'):
     """Shows prestige table (specify rarity as all, Unique, Epic, Hero, etc)"""
-    write_log(ctx.prefix, ctx.command, '{}'.format(crew_rarity),
-              ctx.author, ctx.guild)
+    if DEBUG is True:
+        print(f"[bot.py] prestigetable(crew_rarity={crew_rarity})")
     txt_list, output_file = p.show_table(p.DB_FILE, ctx.author.id, crew_rarity)
     f = discord.File(output_file)
     await ctx.channel.send('Prestige Table', file=f)
