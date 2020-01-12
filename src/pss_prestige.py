@@ -499,7 +499,7 @@ def custom_sqlite_command(command_str):
     # CONN.close()
 
 
-def insert_data(discord_id, discord_name, current_crew, target_crew):
+def insert_data(discord_id: str, discord_name: str, current_crew, target_crew):
     current_crew = ','.join(current_crew)
     target_crew = ','.join(target_crew)
     if DEBUG is True:
@@ -508,14 +508,14 @@ def insert_data(discord_id, discord_name, current_crew, target_crew):
     c = CONN.cursor()
     try:
         c.execute('INSERT INTO chars VALUES (%s, %s, %s, %s)',
-            [discord_id, discord_name, current_crew, target_crew] )
+            [str(discord_id), str(discord_name), current_crew, target_crew] )
     except Exception as e:
         print(f"- Exception: {e}")
     CONN.commit()
     # CONN.close()
 
 
-def update_data(discord_id: int, column: str, crew_list: list):
+def update_data(discord_id: str, column: str, crew_list: list):
     # print('update_data()')
     # print(db_file, type(db_file))
     # print(discord_id, type(discord_id))
@@ -528,7 +528,7 @@ def update_data(discord_id: int, column: str, crew_list: list):
 
     c = CONN.cursor()
     sql_str = "UPDATE chars SET %s=%s WHERE discord_id=%s"
-    sql_data = [ column, crew_list, discord_id ]
+    sql_data = [ column, crew_list, str(discord_id) ]
     if DEBUG is True:
         print(f'- c.execute("{sql_str}", {sql_data})')
     try:
