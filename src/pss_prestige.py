@@ -54,11 +54,11 @@ else:
 
 
 base_url = 'http://{}/'.format(get_production_server())
-next_target = {'Common': 'Elite',
-               'Elite': 'Unique',
-               'Unique': 'Epic',
-               'Epic': 'Hero',
-               'Hero': 'Legendary',
+next_target = {'common': 'Elite',
+               'elite': 'Unique',
+               'unique': 'Epic',
+               'epic': 'Hero',
+               'hero': 'Legendary',
                'all': 'all'}
 
 reqd_folders = ['raw', 'data']
@@ -527,12 +527,12 @@ def update_data(discord_id: str, column: str, crew_list: list):
         print(f'update_data(discord_id={discord_id}, column={column}, crew_list={crew_list})')
 
     c = CONN.cursor()
-    sql_str = "UPDATE chars SET %s=%s WHERE discord_id=%s"
-    sql_data = [ column, crew_list, str(discord_id) ]
+    sql_str = f"UPDATE chars SET {column}=%s WHERE discord_id=%s"
+    sql_data = [ crew_list, str(discord_id) ]
     if DEBUG is True:
         print(f'- c.execute("{sql_str}", {sql_data})')
     try:
-        c.execute(sql_str, data)
+        c.execute(sql_str, sql_data)
         CONN.commit()
     except Exception as e:
         print(f'- Exception: {e}')
@@ -586,6 +586,9 @@ def add_crew(discord_id, discord_name, column, crew_txt):
         elif column == 'target_crew':
             current_crew = []
             target_crew = crew_ids
+        else:
+            print(f'Invalid column={column}')
+            return None, None
         insert_data(discord_id, discord_name, current_crew, target_crew)
         print('{} (id#{}): {} = {} (updated)'.format(discord_name, discord_id, column, crew_ids))
     return txt, crew_ids
@@ -645,7 +648,7 @@ def filter_crew_ids(crew_ids: list, table_rarity: str):
     for crew_id in crew_ids:
         crew_name = tbl_i2n[crew_id]
         crew_rarity = rarity[crew_name]
-        if crew_rarity == table_rarity:
+        if crew_rarity.lower() == table_rarity.lower():
             filtered_ids += [crew_id]
     return filtered_ids
 
@@ -655,8 +658,11 @@ def show_crewlist0(discord_id, column, rarity_filter):
         print(f"show_crewlist0(discord_id={discord_id}, column={column}, rarity_filter={rarity_filter})")
         print(f"- call get_crew_id_list({column}, {discord_id})")
     crew_ids = get_crew_id_list(column, discord_id)
-    # print('crew_ids = {}'.format(crew_ids))
+    if DEBUG is True:
+        print(f'- crew_ids = {crew_ids}')
     filtered_ids = filter_crew_ids(crew_ids, rarity_filter)
+    if DEBUG is True:
+        print(f'- filtered_ids = {filtered_ids}')
     if len(filtered_ids) == 0:
         name_list = []
         txt = '(none)'
@@ -673,15 +679,15 @@ def show_crewlist(discord_id, rarity_filter):
     crew_ids, filtered_ids, name_list, txt = show_crewlist0(
         discord_id, 'current_crew', rarity_filter)
     if rarity_filter == 'all':
-        crew_txt = '**Your Crew**\n'
+        crew_txt = '**Your crew**\n'
     else:
-        crew_txt = '**Your {} Crew**\n'.format(rarity_filter)
+        crew_txt = '**Your {} crew**\n'.format(rarity_filter)
     crew_txt += txt
     if DEBUG is True:
         print(crew_txt)
 
     # Target Crew
-    if rarity_filter in next_target.keys():
+    if rarity_filter.lower() in next_target.keys():
         target_rarity = next_target[rarity_filter]
 
         _, target_ids, target_names, txt = show_crewlist0(
