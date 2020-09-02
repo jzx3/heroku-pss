@@ -9,10 +9,10 @@ This is a Discord Bot for Pixel Starships, targeted for hosting on Heroku
 3. Choose New > Create New App, select a region and click 'Create'.
 4. Under the deploy tab, connect to your Github account, and select this repository.
    Select the button to enable automatic deploys or use a manual deploy.
-5. Under the overview tab, choose "Configure Dynos"
-   Enable the option where it says `worker: python src/bot.py`.
-6  Obtain a bot token from the
-   [Discord developer page](https://discordapp.com/developers/applications)
+5. Under the overview tab, choose "Configure Dynos".
+   Enable the option where it says worker: `python src/bot.py`.
+6. Obtain a bot token from the
+   [Discord developer page](https://discordapp.com/developers/applications).
 7. Under settings, choose "Reveal Config Vars".
    Enter `DISCORD_BOT_TOKEN` as the variable name.
    Enter the value from the bot token retrieved earlier.
