@@ -1,6 +1,8 @@
 # Pixel Starships Discord Bot
 
-This is a Discord Bot for Pixel Starships, targeted for hosting on Heroku
+This is a Discord Bot for Pixel Starships, targeted for hosting on Heroku.
+
+**Home Page**: https://jzx3.github.io/heroku-pss/
 
 ## 1. Setup for Hosting on Heroku
 
